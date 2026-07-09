@@ -1,0 +1,35 @@
+name: Refresh College Data
+
+# Runs automatically on the 1st of each month, and can be triggered manually
+# any time from the Actions tab (Run workflow button) — e.g. right now, to do
+# the initial full seed.
+on:
+  schedule:
+    - cron: "0 6 1 * *" # 06:00 UTC, 1st of every month
+  workflow_dispatch: {}
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Fetch latest college data
+        run: node scripts/fetch-colleges.mjs
+        env:
+          COLLEGE_SCORECARD_API_KEY: ${{ secrets.COLLEGE_SCORECARD_API_KEY }}
+
+      - name: Seed into Supabase
+        run: node scripts/seed-colleges.mjs
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

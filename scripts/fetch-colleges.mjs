@@ -1,11 +1,15 @@
 /**
- * Day 2: pulls ~250 four-year institutions from the College Scorecard API,
- * stratified by admission-rate band so a test profile always sees a plausible
- * spread of safety/match/reach schools.
+ * Pulls the full pool of four-year, currently-operating institutions from the
+ * College Scorecard API (~2,600 schools) and writes them to data/colleges.json.
+ * Each record is tagged with an admission_band (its admission-rate bucket) for
+ * reference/analysis — no downsampling happens here anymore; every school the
+ * API returns for the filter goes into the table.
  *
  * Run locally (needs real internet access + a free key from https://api.data.gov/signup/):
  *   node --env-file=.env.local scripts/fetch-colleges.mjs
- * (or: node -r dotenv/config scripts/fetch-colleges.mjs, which also reads .env.local)
+ *
+ * In CI (GitHub Actions), env vars are injected directly — see
+ * .github/workflows/refresh-colleges.yml — so no .env.local is needed there.
  *
  * Output: data/colleges.json
  */
@@ -13,7 +17,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-// Load .env.local if it hasn't been loaded already (e.g. via --env-file)
+// Load .env.local if it hasn't been loaded already (e.g. via --env-file, or CI secrets)
 if (!process.env.COLLEGE_SCORECARD_API_KEY) {
   try {
     const dotenv = await import("dotenv");
@@ -30,7 +34,9 @@ const BASE_URL = "https://api.data.gov/ed/collegescorecard/v1/schools.json";
 if (API_KEY === "DEMO_KEY") {
   console.warn(
     "⚠ No COLLEGE_SCORECARD_API_KEY set — falling back to DEMO_KEY, which is rate-limited " +
-    "to ~30 requests/hour. Get a free key at https://api.data.gov/signup/ and add it to .env.local."
+    "to ~30 requests/hour. Pulling the full ~2,600-school pool needs ~27 requests, which DEMO_KEY " +
+    "can just barely do in one run, but get a free key at https://api.data.gov/signup/ for headroom " +
+    "and for the scheduled monthly refresh."
   );
 }
 
@@ -107,7 +113,7 @@ function normalize(raw) {
   };
 }
 
-/** Which admission-rate band a school falls into. */
+/** Which admission-rate band a school falls into (kept for reference/analysis). */
 function bandFor(admissionRate) {
   if (admissionRate === null || admissionRate === undefined) return "unknown";
   if (admissionRate < 0.10) return "under_10";
@@ -118,64 +124,39 @@ function bandFor(admissionRate) {
   return "over_80";
 }
 
-// Target counts per band, summing to 250. Weighted toward match/reach territory
-// (40-80% admit rate) since that's where most students' real school lists land,
-// while still guaranteeing some highly selective reaches and true safeties.
-const TARGET_COUNTS = {
-  under_10: 15,
-  "10_25": 35,
-  "25_40": 45,
-  "40_60": 55,
-  "60_80": 55,
-  over_80: 35,
-  unknown: 10,
-};
-
 async function main() {
-  console.log(`Fetching candidate pool from College Scorecard (key: ${API_KEY === "DEMO_KEY" ? "DEMO_KEY" : "custom"})...`);
+  console.log(`Fetching full college pool from College Scorecard (key: ${API_KEY === "DEMO_KEY" ? "DEMO_KEY" : "custom"})...`);
 
   const pool = [];
-  const MAX_PAGES = 15; // 15 * 100 = up to 1,500 candidates to stratify from
+  const seen = new Set();
+  const MAX_PAGES = 40; // 40 * 100 = up to 4,000 — comfortably covers the ~2,600 four-year pool
   for (let page = 0; page < MAX_PAGES; page++) {
     const data = await fetchPage(page);
     const results = data.results ?? [];
     if (results.length === 0) break;
-    pool.push(...results.map(normalize));
+
+    for (const raw of results) {
+      const school = normalize(raw);
+      if (seen.has(school.id)) continue; // defensive de-dupe across pages
+      seen.add(school.id);
+      school.admission_band = bandFor(school.admission_rate);
+      pool.push(school);
+    }
+
     console.log(`  page ${page}: ${results.length} records (pool: ${pool.length})`);
-    if (pool.length >= data.metadata?.total) break;
+    if (data.metadata?.total && pool.length >= data.metadata.total) break;
   }
 
-  // Bucket by admission-rate band.
-  const buckets = {};
-  for (const school of pool) {
-    const band = bandFor(school.admission_rate);
-    (buckets[band] ??= []).push(school);
-  }
-
-  console.log("\nCandidate pool by band:");
-  for (const [band, count] of Object.entries(TARGET_COUNTS)) {
-    console.log(`  ${band}: ${buckets[band]?.length ?? 0} available, need ${count}`);
-  }
-
-  // Deterministic "random" sample (seeded by id) so re-runs are reproducible.
-  function sample(arr, n) {
-    const sorted = [...arr].sort((a, b) => (a.id % 9973) - (b.id % 9973));
-    return sorted.slice(0, n);
-  }
-
-  const selected = [];
-  for (const [band, count] of Object.entries(TARGET_COUNTS)) {
-    const available = buckets[band] ?? [];
-    const chosen = sample(available, Math.min(count, available.length));
-    for (const school of chosen) school.admission_band = band;
-    selected.push(...chosen);
-  }
+  const bandCounts = {};
+  for (const school of pool) bandCounts[school.admission_band] = (bandCounts[school.admission_band] ?? 0) + 1;
+  console.log("\nFull pool by admission-rate band:");
+  for (const [band, count] of Object.entries(bandCounts)) console.log(`  ${band}: ${count}`);
 
   const outPath = path.join(__dirname, "..", "data", "colleges.json");
   fs.mkdirSync(path.dirname(outPath), { recursive: true });
-  fs.writeFileSync(outPath, JSON.stringify(selected, null, 2));
+  fs.writeFileSync(outPath, JSON.stringify(pool, null, 2));
 
-  console.log(`\n✓ Wrote ${selected.length} schools to ${path.relative(process.cwd(), outPath)}`);
+  console.log(`\n✓ Wrote ${pool.length} schools to ${path.relative(process.cwd(), outPath) || outPath}`);
   console.log("Next: node --env-file=.env.local scripts/seed-colleges.mjs");
 }
 
