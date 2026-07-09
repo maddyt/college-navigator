@@ -6,11 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "fetch:colleges": "node --env-file=.env.local scripts/fetch-colleges.mjs",
+    "seed:colleges": "node --env-file=.env.local scripts/seed-colleges.mjs",
     "lint": "eslint"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.0",
-    "next": "16.2.9",
+    "next": "^16.2.10",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },
@@ -21,6 +23,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
+    "dotenv": "^17.4.2",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
