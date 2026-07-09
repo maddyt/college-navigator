@@ -8,6 +8,9 @@
     "start": "next start",
     "fetch:colleges": "node --env-file=.env.local scripts/fetch-colleges.mjs",
     "seed:colleges": "node --env-file=.env.local scripts/seed-colleges.mjs",
+    "compute:derived": "tsx scripts/compute-derived-fields.mjs", 
+    "validate:colleges": "node scripts/validate-colleges.mjs", 
+    "data:refresh": "npm run fetch:colleges && npm run compute:derived && npm run validate:colleges && npm run seed:colleges",
     "lint": "eslint"
   },
   "dependencies": {
@@ -21,10 +24,11 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^17.4.2",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
-    "dotenv": "^17.4.2",
     "tailwindcss": "^4",
+    "tsx": "^4.22.5",
     "typescript": "^5"
   }
 }
