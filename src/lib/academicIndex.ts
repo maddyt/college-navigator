@@ -77,3 +77,54 @@ export function schoolAcademicIndexFromPercentiles(bands: SchoolTestBands): Scho
 
   return { academic_index_25: null, academic_index_75: null, source: "none" };
 }
+
+export interface StudentTestInput {
+  /** Unweighted GPA on a 0-4.0 scale by default; pass gpaScale for weighted GPAs (e.g. 5.0). */
+  gpa: number | null;
+  gpaScale?: number;
+  /** Combined SAT (Reading+Math). Omit/null if not taken or not submitting. */
+  satTotal?: number | null;
+  /** ACT composite. Omit/null if not taken or not submitting. */
+  actComposite?: number | null;
+}
+
+export interface StudentAcademicIndexResult {
+  index: number | null;
+  gpaIndex: number | null;
+  testIndex: number | null;
+  /** 'gpa_and_test' when both are available, 'gpa_only' for test-optional students, 'none' if GPA itself is missing. */
+  source: "gpa_and_test" | "gpa_only" | "none";
+}
+
+/**
+ * Derives a student's academic index on the same 0-100 scale as
+ * schoolAcademicIndexFromPercentiles(), so the two can be compared directly.
+ * Weights GPA and test score equally (50/50) when both are present — a
+ * simple, explainable split rather than a fitted/statistical weighting,
+ * consistent with this being a transparent heuristic, not a trained model.
+ * Test-optional students (no SAT/ACT provided) are scored on GPA alone
+ * rather than penalized or given a fabricated test estimate.
+ */
+export function studentAcademicIndex(input: StudentTestInput): StudentAcademicIndexResult {
+  const { gpa, gpaScale = 4.0, satTotal, actComposite } = input;
+
+  if (gpa == null) {
+    return { index: null, gpaIndex: null, testIndex: null, source: "none" };
+  }
+
+  const gpaIndex = clamp((gpa / gpaScale) * 100, 0, 100);
+
+  const testIndex =
+    satTotal != null ? satToIndex(satTotal) : actComposite != null ? actToIndex(actComposite) : null;
+
+  if (testIndex != null) {
+    return {
+      index: gpaIndex * 0.5 + testIndex * 0.5,
+      gpaIndex,
+      testIndex,
+      source: "gpa_and_test",
+    };
+  }
+
+  return { index: gpaIndex, gpaIndex, testIndex: null, source: "gpa_only" };
+}
