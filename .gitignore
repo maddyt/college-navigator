@@ -40,4 +40,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+# colleges.json is committed on purpose: getColleges.ts statically imports
+# it as a fallback dataset, so it must exist on a fresh clone / CI / Vercel
+# build, not just after a local `npm run fetch:colleges`.
 data/*.json
+!data/colleges.json
