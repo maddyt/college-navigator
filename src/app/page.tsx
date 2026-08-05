@@ -4,13 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { getRankedColleges, type RankResponse, type OnboardingInput } from "./actions";
 import { US_STATES } from "@/lib/states";
 import type { SizePreference } from "@/lib/matching";
-
-const TIER_STYLES: Record<string, string> = {
-  safety: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  match: "bg-amber-50 text-amber-700 border-amber-200",
-  reach: "bg-rose-50 text-rose-700 border-rose-200",
-  unknown: "bg-slate-100 text-slate-600 border-slate-200",
-};
+import { ResultsView } from "@/components/ResultsView";
 
 export default function Home() {
   const [gpa, setGpa] = useState("");
@@ -183,7 +177,7 @@ export default function Home() {
           </button>
         </form>
 
-        {result && <ResultsSection result={result} />}
+        {result && <ResultsView result={result} />}
       </div>
     </main>
   );
@@ -202,61 +196,5 @@ function SliderRow({ label, value, onChange }: { label: string; value: number; o
         className="mt-1 w-full"
       />
     </label>
-  );
-}
-
-/**
- * Deliberately minimal — Day 6 replaces this with real card UI, filters,
- * and a compare view. This exists so the algorithm is actually reachable
- * and testable end to end before that polish work happens.
- */
-function ResultsSection({ result }: { result: RankResponse }) {
-  if (!result.ok) {
-    return (
-      <div className="mt-6 rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
-        {result.error}
-      </div>
-    );
-  }
-
-  const { academic, colleges } = result;
-
-  return (
-    <div className="mt-8">
-      <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-600">
-        Your academic index: <span className="font-semibold text-slate-800">{academic.index?.toFixed(1) ?? "n/a"}</span>{" "}
-        <span className="text-xs text-slate-400">
-          ({academic.source === "gpa_and_test" ? "GPA + test score" : academic.source === "gpa_only" ? "GPA only (test-optional)" : "insufficient data"})
-        </span>
-      </div>
-
-      <ul className="mt-4 space-y-3">
-        {colleges.map((c) => (
-          <li key={c.id} className="rounded-lg border border-slate-200 bg-white p-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="font-medium text-slate-800">{c.name}</span>
-              <span
-                className={`rounded-full border px-2.5 py-0.5 text-xs font-medium uppercase ${TIER_STYLES[c.probabilityResult.tier]}`}
-              >
-                {c.probabilityResult.tier}
-              </span>
-            </div>
-            <div className="mt-1 text-xs text-slate-400">
-              {c.state ?? "—"} · {c.size ? `${c.size.toLocaleString()} students` : "size unknown"} ·{" "}
-              probability{" "}
-              {c.probabilityResult.probability != null ? `${Math.round(c.probabilityResult.probability * 100)}%` : "n/a"} ·
-              match {c.matchResult.score.toFixed(0)}/100
-            </div>
-            <p className="mt-2 text-sm text-slate-600">{c.probabilityResult.explanation}</p>
-          </li>
-        ))}
-      </ul>
-
-      {colleges.length === 0 && (
-        <p className="mt-4 text-sm text-slate-500">
-          No colleges loaded. Make sure the colleges table has been seeded (see DAY2.md/DAY3.md).
-        </p>
-      )}
-    </div>
   );
 }

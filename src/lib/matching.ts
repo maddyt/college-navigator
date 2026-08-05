@@ -213,25 +213,33 @@ export function matchScore(
 
 // --- Combining both into one ranked list ----------------------------------
 
-export interface RankedCollege extends CollegeForMatching {
+export type RankedCollege<T extends CollegeForMatching = CollegeForMatching> = T & {
   probabilityResult: ProbabilityResult;
   matchResult: MatchScoreResult;
-}
+};
 
 const TIER_ORDER: Record<Tier, number> = { safety: 0, match: 1, reach: 2, unknown: 3 };
 
 /**
  * Tags every school with a probability estimate and a match score, then
  * sorts by tier (safety -> match -> reach -> unknown) and, within a tier,
- * by match score descending. This is the function the Day 5 results UI
- * calls directly with the student's profile and the full college list.
+ * by match score descending. This is the function the results UI calls
+ * directly with the student's profile and the full college list.
+ *
+ * Generic over T so callers passing a richer type than CollegeForMatching
+ * (e.g. getColleges.ts's College, which adds city/ownership/etc. for
+ * display) get those fields back on the ranked result too — without this,
+ * TypeScript would silently narrow the return type down to just the
+ * matching-relevant fields even though the extra data is still there at
+ * runtime, which would have forced an awkward re-join in the UI layer. This
+ * generic was added in Day 6 while wiring up the results cards.
  */
-export function rankColleges(
+export function rankColleges<T extends CollegeForMatching>(
   studentIndex: number | null,
   prefs: StudentPreferences,
-  schools: CollegeForMatching[]
-): RankedCollege[] {
-  const ranked: RankedCollege[] = schools.map((school) => ({
+  schools: T[]
+): RankedCollege<T>[] {
+  const ranked: RankedCollege<T>[] = schools.map((school) => ({
     ...school,
     probabilityResult: probabilityEstimate(studentIndex, school),
     matchResult: matchScore(school, prefs),

@@ -8,7 +8,7 @@
  */
 import { studentAcademicIndex, type StudentAcademicIndexResult } from "@/lib/academicIndex";
 import { rankColleges, type RankedCollege, type SizePreference } from "@/lib/matching";
-import { getColleges } from "@/lib/getColleges";
+import { getColleges, type College } from "@/lib/getColleges";
 
 export interface OnboardingInput {
   gpa: number;
@@ -23,7 +23,7 @@ export interface OnboardingInput {
 export interface RankSuccess {
   ok: true;
   academic: StudentAcademicIndexResult;
-  colleges: RankedCollege[];
+  colleges: RankedCollege<College>[];
 }
 
 export interface RankFailure {
