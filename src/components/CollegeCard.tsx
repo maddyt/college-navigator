@@ -27,10 +27,12 @@ export function CollegeCard({
   college,
   saved,
   onToggleSave,
+  onViewDetails,
 }: {
   college: RankedCollege<College>;
   saved: boolean;
   onToggleSave: (id: number) => void;
+  onViewDetails: (id: number) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const { probabilityResult: p, matchResult: m } = college;
@@ -64,7 +66,7 @@ export function CollegeCard({
 
       <p className="mt-2 text-sm text-slate-600">{oneLineSummary(college)}</p>
 
-      <div className="mt-3 flex items-center justify-between">
+      <div className="mt-3 flex items-center justify-between gap-2">
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
@@ -72,15 +74,24 @@ export function CollegeCard({
         >
           {expanded ? "Hide details" : "Why this estimate?"}
         </button>
-        <button
-          type="button"
-          onClick={() => onToggleSave(college.id)}
-          className={`rounded-md border px-2.5 py-1 text-xs font-medium ${
-            saved ? "border-slate-800 bg-slate-800 text-white" : "border-slate-300 text-slate-600 hover:bg-slate-50"
-          }`}
-        >
-          {saved ? "★ Saved" : "☆ Save"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onViewDetails(college.id)}
+            className="rounded-md border border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50"
+          >
+            Full details
+          </button>
+          <button
+            type="button"
+            onClick={() => onToggleSave(college.id)}
+            className={`rounded-md border px-2.5 py-1 text-xs font-medium ${
+              saved ? "border-slate-800 bg-slate-800 text-white" : "border-slate-300 text-slate-600 hover:bg-slate-50"
+            }`}
+          >
+            {saved ? "★ Saved" : "☆ Save"}
+          </button>
+        </div>
       </div>
 
       {expanded && (

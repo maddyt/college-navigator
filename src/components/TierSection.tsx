@@ -28,11 +28,13 @@ export function TierSection({
   colleges,
   savedIds,
   onToggleSave,
+  onViewDetails,
 }: {
   tier: Tier;
   colleges: RankedCollege<College>[];
   savedIds: Set<number>;
   onToggleSave: (id: number) => void;
+  onViewDetails: (id: number) => void;
 }) {
   if (colleges.length === 0) return null;
 
@@ -47,7 +49,13 @@ export function TierSection({
 
       <ul className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {colleges.map((c) => (
-          <CollegeCard key={c.id} college={c} saved={savedIds.has(c.id)} onToggleSave={onToggleSave} />
+          <CollegeCard
+            key={c.id}
+            college={c}
+            saved={savedIds.has(c.id)}
+            onToggleSave={onToggleSave}
+            onViewDetails={onViewDetails}
+          />
         ))}
       </ul>
     </section>

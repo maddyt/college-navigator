@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import type { RankResponse } from "@/app/actions";
 import type { Tier } from "@/lib/matching";
 import { TierSection } from "./TierSection";
+import { CollegeDetailModal } from "./CollegeDetailModal";
+import { CompareModal } from "./CompareModal";
 
 const ALL_TIERS: Tier[] = ["safety", "match", "reach", "unknown"];
 
@@ -14,6 +16,8 @@ export function ResultsView({ result }: { result: RankResponse }) {
   const [sortMode, setSortMode] = useState<SortMode>("default");
   const [showSavedOnly, setShowSavedOnly] = useState(false);
   const [savedIds, setSavedIds] = useState<Set<number>>(new Set());
+  const [detailCollegeId, setDetailCollegeId] = useState<number | null>(null);
+  const [compareOpen, setCompareOpen] = useState(false);
 
   const toggleTier = (tier: Tier) => {
     setVisibleTiers((prev) => {
@@ -106,10 +110,19 @@ export function ResultsView({ result }: { result: RankResponse }) {
           </select>
         </div>
 
-        <label className="ml-auto flex items-center gap-1 text-slate-600">
+        <label className="flex items-center gap-1 text-slate-600">
           <input type="checkbox" checked={showSavedOnly} onChange={(e) => setShowSavedOnly(e.target.checked)} />
           Saved only ({savedIds.size})
         </label>
+
+        <button
+          type="button"
+          onClick={() => setCompareOpen(true)}
+          disabled={savedIds.size < 2}
+          className="ml-auto rounded-md border border-slate-300 px-2.5 py-1 font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+        >
+          Compare saved ({savedIds.size})
+        </button>
       </div>
 
       {totalShown === 0 && (
@@ -120,8 +133,28 @@ export function ResultsView({ result }: { result: RankResponse }) {
 
       {grouped &&
         ALL_TIERS.filter((t) => visibleTiers.has(t)).map((tier) => (
-          <TierSection key={tier} tier={tier} colleges={grouped[tier]} savedIds={savedIds} onToggleSave={toggleSave} />
+          <TierSection
+            key={tier}
+            tier={tier}
+            colleges={grouped[tier]}
+            savedIds={savedIds}
+            onToggleSave={toggleSave}
+            onViewDetails={setDetailCollegeId}
+          />
         ))}
+
+      {detailCollegeId != null &&
+        (() => {
+          const college = colleges.find((c) => c.id === detailCollegeId);
+          return college ? <CollegeDetailModal college={college} onClose={() => setDetailCollegeId(null)} /> : null;
+        })()}
+
+      {compareOpen && (
+        <CompareModal
+          colleges={colleges.filter((c) => savedIds.has(c.id))}
+          onClose={() => setCompareOpen(false)}
+        />
+      )}
     </div>
   );
 }
